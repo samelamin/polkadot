@@ -108,7 +108,12 @@ impl<B> grandpa::VotingRule<PolkadotBlock, B> for ApprovalCheckingDiagnostic
 
 		// Query approval checking and issue metrics.
 		let mut overseer = self.overseer.clone();
-		let approval_checking_subsystem_vote = futures::executor::block_on(Box::pin(async move {
+
+		// This is a hack. `futures::executor::block_on` doesn't work because
+		// it's an executor within an executor. This does for some reason.
+		//
+		// But really this whole function should be async.
+		let approval_checking_subsystem_vote = async_std::task::block_on(Box::pin(async move {
 			let (tx, rx) = oneshot::channel();
 			overseer.send_msg(ApprovalVotingMessage::ApprovedAncestor(
 				current_target.hash(),
