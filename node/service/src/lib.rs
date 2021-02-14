@@ -156,7 +156,7 @@ impl IdentifyVariant for Box<dyn ChainSpec> {
 		self.id().starts_with("westend") || self.id().starts_with("wnd")
 	}
 	fn is_rococo(&self) -> bool {
-		self.id().starts_with("rococo") || self.id().starts_with("rco")
+		self.id().starts_with("rococo") || self.id().starts_with("rco") || self.id().starts_with("chachacha")
 	}
 }
 

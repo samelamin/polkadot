@@ -97,8 +97,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 /// Runtime version (Rococo).
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("rococo"),
-	impl_name: create_runtime_str!("parity-rococo-v1.1"),
+	spec_name: create_runtime_str!("chachacha"),
+	impl_name: create_runtime_str!("centrifuge-chachacha-v1.1"),
 	authoring_version: 0,
 	spec_version: 202,
 	impl_version: 0,
@@ -596,8 +596,7 @@ impl EnsureOrigin<Origin> for PriviledgedOrigin {
 
 	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		let allowed = [
-			hex_literal::hex!("b44c58e50328768ac06ed44b842bfa69d86ea10f60bc36156c9ffc5e00867220"),
-			hex_literal::hex!("762a6a38ba72b139cba285a39a6766e02046fb023f695f5ecf7f48b037c0dd6b")
+			hex_literal::hex!("a8cb93b2be45d72e6901fa2ea9a51f3e1a42ad8ec5f48a580407d76d9921f675")
 		];
 
 		let origin = o.clone();
