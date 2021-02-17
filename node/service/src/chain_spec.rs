@@ -110,7 +110,7 @@ pub fn rococo_config() -> Result<PolkadotChainSpec, String> {
 }
 
 pub fn chachacha_config() -> Result<PolkadotChainSpec, String> {
-	PolkadotChainSpec::from_json_bytes(&include_bytes!("../res/chachacha.json")[..])
+	PolkadotChainSpec::from_json_bytes(&include_bytes!("../res/rococo-chachacha.json")[..])
 }
 
 fn polkadot_session_keys(
@@ -1102,6 +1102,30 @@ pub fn westend_staging_testnet_config() -> Result<WestendChainSpec, String> {
 
 /// Rococo staging testnet config.
 pub fn rococo_staging_testnet_config() -> Result<RococoChainSpec, String> {
+	let wasm_binary = rococo::WASM_BINARY.ok_or("Rococo development wasm not available")?;
+	let boot_nodes = vec![];
+
+	Ok(RococoChainSpec::from_genesis(
+		"Rococo Staging Testnet",
+		"rococo_staging_testnet",
+		ChainType::Live,
+		move || RococoGenesisExt {
+			runtime_genesis_config: rococo_staging_testnet_config_genesis(wasm_binary),
+			session_length_in_blocks: Some(10),
+		},
+		boot_nodes,
+		Some(
+			TelemetryEndpoints::new(vec![(ROCOCO_STAGING_TELEMETRY_URL.to_string(), 0)])
+				.expect("Rococo Staging telemetry url is valid; qed"),
+		),
+		Some(DEFAULT_PROTOCOL_ID),
+		None,
+		Default::default(),
+	))
+}
+
+/// Chachacha staging testnet config.
+pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 	let wasm_binary = rococo::WASM_BINARY.ok_or("Chachacha development wasm not available")?;
 	let boot_nodes = vec![];
 
@@ -1747,7 +1771,7 @@ pub fn chachacha_local_testnet_config() -> Result<RococoChainSpec, String> {
 
 	Ok(RococoChainSpec::from_genesis(
 		"Chachacha Local Testnet",
-		"chachacha_local_testnet",
+		"rococo_chachacha_local_testnet",
 		ChainType::Local,
 		move || RococoGenesisExt {
 			runtime_genesis_config: rococo_local_testnet_genesis(wasm_binary),
