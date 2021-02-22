@@ -109,6 +109,10 @@ pub fn rococo_config() -> Result<PolkadotChainSpec, String> {
 	PolkadotChainSpec::from_json_bytes(&include_bytes!("../res/rococo.json")[..])
 }
 
+pub fn chachacha_config() -> Result<PolkadotChainSpec, String> {
+	PolkadotChainSpec::from_json_bytes(&include_bytes!("../res/rococo-chachacha.json")[..])
+}
+
 fn polkadot_session_keys(
 	babe: BabeId,
 	grandpa: GrandpaId,
@@ -1107,7 +1111,7 @@ pub fn rococo_staging_testnet_config() -> Result<RococoChainSpec, String> {
 		ChainType::Live,
 		move || RococoGenesisExt {
 			runtime_genesis_config: rococo_staging_testnet_config_genesis(wasm_binary),
-			session_length_in_blocks: Some(10),
+			session_length_in_blocks: None,
 		},
 		boot_nodes,
 		Some(
@@ -1131,7 +1135,7 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 		ChainType::Live,
 		move || RococoGenesisExt {
 			runtime_genesis_config: chachacha_staging_testnet_config_genesis(wasm_binary),
-			session_length_in_blocks: Some(10),
+			session_length_in_blocks: None,
 		},
 		boot_nodes,
 		Some(

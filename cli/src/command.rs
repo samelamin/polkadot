@@ -91,7 +91,7 @@ impl SubstrateCli for Cli {
 			"rococo" => Box::new(service::chain_spec::rococo_config()?),
 			"rococo-chachacha-staging" => Box::new(service::chain_spec::chachacha_staging_testnet_config()?),
 			"rococo-chachacha-local" => Box::new(service::chain_spec::chachacha_local_testnet_config()?),
-			// "chachacha" => Box::new(service::chain_spec::chachacha_config()?),
+			"chachacha" => Box::new(service::chain_spec::chachacha_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
