@@ -24,7 +24,7 @@ use sp_runtime::traits::{Block as BlockT, NumberFor};
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Header as _;
 
-#[cfg(feature = "approval-checking")]
+#[cfg(feature = "real-overseer")]
 use {
 	polkadot_primitives::v1::{Block as PolkadotBlock, Header as PolkadotHeader, BlockNumber},
 	polkadot_subsystem::messages::ApprovalVotingMessage,
@@ -39,14 +39,14 @@ use {
 /// The practical effect of this voting rule is to implement a fixed delay of
 /// blocks and to issue a prometheus metric on the lag behind the head that
 /// approval checking would indicate.
-#[cfg(feature = "approval-checking")]
+#[cfg(feature = "real-overseer")]
 #[derive(Clone)]
 pub(crate) struct ApprovalCheckingDiagnostic {
 	checking_lag: Option<prometheus_endpoint::Histogram>,
 	overseer: OverseerHandler,
 }
 
-#[cfg(feature = "approval-checking")]
+#[cfg(feature = "real-overseer")]
 impl ApprovalCheckingDiagnostic {
 	/// Create a new approval checking diagnostic voting rule.
 	pub fn new(overseer: OverseerHandler, registry: Option<&Registry>)
@@ -57,7 +57,7 @@ impl ApprovalCheckingDiagnostic {
 				Some(prometheus_endpoint::register(
 					prometheus_endpoint::Histogram::with_opts(
 						prometheus_endpoint::HistogramOpts::new(
-							"approval_checking_finality_lag",
+							"parachain_approval_checking_finality_lag",
 							"How far behind the head of the chain the Approval Checking protocol wants to vote",
 						).buckets(vec![1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0])
 					)?,
@@ -71,7 +71,7 @@ impl ApprovalCheckingDiagnostic {
 	}
 }
 
-#[cfg(feature = "approval-checking")]
+#[cfg(feature = "real-overseer")]
 impl<B> grandpa::VotingRule<PolkadotBlock, B> for ApprovalCheckingDiagnostic
 	where B: sp_blockchain::HeaderBackend<PolkadotBlock>
 {

@@ -49,7 +49,7 @@ frame_support::construct_runtime!(
 		Initializer: initializer::{Module, Call, Storage},
 		Dmp: dmp::{Module, Call, Storage},
 		Ump: ump::{Module, Call, Storage},
-		Hrmp: hrmp::{Module, Call, Storage},
+		Hrmp: hrmp::{Module, Call, Storage, Event},
 		SessionInfo: session_info::{Module, Call, Storage},
 	}
 );
@@ -126,6 +126,7 @@ impl crate::ump::Config for Test {
 }
 
 impl crate::hrmp::Config for Test {
+	type Event = Event;
 	type Origin = Origin;
 	type Currency = pallet_balances::Module<Test>;
 }
@@ -141,9 +142,21 @@ impl crate::inclusion_inherent::Config for Test { }
 
 impl crate::session_info::Config for Test { }
 
+thread_local! {
+	pub static DISCOVERY_AUTHORITIES: RefCell<Vec<AuthorityDiscoveryId>> = RefCell::new(Vec::new());
+}
+
+pub fn discovery_authorities() -> Vec<AuthorityDiscoveryId> {
+	DISCOVERY_AUTHORITIES.with(|r| r.borrow().clone())
+}
+
+pub fn set_discovery_authorities(new: Vec<AuthorityDiscoveryId>) {
+	DISCOVERY_AUTHORITIES.with(|r| *r.borrow_mut() = new);
+}
+
 impl crate::session_info::AuthorityDiscoveryConfig for Test {
 	fn authorities() -> Vec<AuthorityDiscoveryId> {
-		Vec::new()
+		discovery_authorities()
 	}
 }
 
