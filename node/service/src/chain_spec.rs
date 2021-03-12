@@ -1146,7 +1146,7 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 		ChainType::Live,
 		move || RococoGenesisExt {
 			runtime_genesis_config: chachacha_staging_testnet_config_genesis(wasm_binary),
-			session_length_in_blocks: Some(10),
+			session_length_in_blocks: Some(100),
 		},
 		boot_nodes,
 		Some(
