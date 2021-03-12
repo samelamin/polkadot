@@ -42,6 +42,7 @@ const KUSAMA_STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/"
 const WESTEND_STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 const ROCOCO_STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 const DEFAULT_PROTOCOL_ID: &str = "dot";
+const CHACHACHA_PROTOCOL_ID: &str = "chachacha";
 
 /// Node `ChainSpec` extensions.
 ///
@@ -1139,6 +1140,11 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 	let wasm_binary = rococo::WASM_BINARY.ok_or("Chachacha development wasm not available")?;
 	let boot_nodes = vec![];
 
+	let mut properties = Map::new();
+	properties.insert("ss58Format".into(), 42.into());
+	properties.insert("tokenDecimals".into(), 12.into());
+	properties.insert("tokenSymbol".into(), "CHA".into());
+
 	Ok(RococoChainSpec::from_genesis(
 		"Chachacha Staging Testnet",
 		"rococo_chachacha_staging_testnet",
@@ -1152,8 +1158,8 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 			TelemetryEndpoints::new(vec![(ROCOCO_STAGING_TELEMETRY_URL.to_string(), 0)])
 				.expect("Chachacha Staging telemetry url is valid; qed"),
 		),
-		Some(DEFAULT_PROTOCOL_ID),
-		None,
+		Some(CHACHACHA_PROTOCOL_ID),
+		Some(properties),
 		Default::default(),
 	))
 }
