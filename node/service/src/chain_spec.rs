@@ -966,20 +966,20 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 	const STASH: u128 = 100 * ROC;
 
 	rococo_runtime::GenesisConfig {
-		frame_system: Some(rococo_runtime::SystemConfig {
+		frame_system: rococo_runtime::SystemConfig {
 			code: wasm_binary.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_balances: Some(rococo_runtime::BalancesConfig {
+		},
+		pallet_balances: rococo_runtime::BalancesConfig {
 			balances: endowed_accounts.iter()
 				.map(|k: &AccountId| (k.clone(), ENDOWMENT))
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
 				.collect(),
-		}),
-		pallet_indices: Some(rococo_runtime::IndicesConfig {
+		},
+		pallet_indices: rococo_runtime::IndicesConfig {
 			indices: vec![],
-		}),
-		pallet_session: Some(rococo_runtime::SessionConfig {
+		},
+		pallet_session: rococo_runtime::SessionConfig {
 			keys: initial_authorities.iter().map(|x| (
 				x.0.clone(),
 				x.0.clone(),
@@ -992,17 +992,17 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 					x.7.clone(),
 				),
 			)).collect::<Vec<_>>(),
-		}),
-		pallet_babe: Some(Default::default()),
-		pallet_grandpa: Some(Default::default()),
-		pallet_im_online: Some(Default::default()),
-		pallet_authority_discovery: Some(rococo_runtime::AuthorityDiscoveryConfig {
+		},
+		pallet_babe: Default::default(),
+		pallet_grandpa: Default::default(),
+		pallet_im_online: Default::default(),
+		pallet_authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {
 			keys: vec![],
-		}),
-		pallet_sudo: Some(rococo_runtime::SudoConfig {
+		},
+		pallet_sudo: rococo_runtime::SudoConfig {
 			key: endowed_accounts[0].clone(),
-		}),
-		parachains_configuration: Some(rococo_runtime::ParachainsConfigurationConfig {
+		},
+		parachains_configuration: rococo_runtime::ParachainsConfigurationConfig {
 			config: polkadot_runtime_parachains::configuration::HostConfiguration {
 				validation_upgrade_frequency: 600u32,
 				validation_upgrade_delay: 300,
@@ -1043,7 +1043,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				zeroth_delay_tranche_width: 0,
 				..Default::default()
 			},
-		}),
+		},
 	}
 }
 
