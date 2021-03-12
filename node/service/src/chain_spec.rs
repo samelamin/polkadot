@@ -1140,11 +1140,6 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 	let wasm_binary = rococo::WASM_BINARY.ok_or("Chachacha development wasm not available")?;
 	let boot_nodes = vec![];
 
-	let mut properties = Map::new();
-	properties.insert("ss58Format".into(), 42.into());
-	properties.insert("tokenDecimals".into(), 12.into());
-	properties.insert("tokenSymbol".into(), "CHA".into());
-
 	Ok(RococoChainSpec::from_genesis(
 		"Chachacha Staging Testnet",
 		"rococo_chachacha_staging_testnet",
@@ -1159,7 +1154,7 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 				.expect("Chachacha Staging telemetry url is valid; qed"),
 		),
 		Some(CHACHACHA_PROTOCOL_ID),
-		Some(properties),
+		None,
 		Default::default(),
 	))
 }
