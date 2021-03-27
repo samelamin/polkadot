@@ -1122,7 +1122,10 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				),
 			)).collect::<Vec<_>>(),
 		},
-		pallet_babe: Default::default(),
+		pallet_babe: rococo_runtime::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(rococo_runtime::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {
@@ -1137,7 +1140,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				validation_upgrade_delay: 300,
 				acceptance_period: 1200,
 				max_code_size: 5 * 1024 * 1024,
-				max_pov_size: 50 * 1024 * 1024,
+				max_pov_size: MAX_POV_SIZE,
 				max_head_data_size: 32 * 1024,
 				group_rotation_frequency: 20,
 				chain_availability_period: 4,
