@@ -25,7 +25,7 @@ use kusama_runtime as kusama;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_staking::Forcing;
 use polkadot::constants::currency::DOTS;
-use polkadot_primitives::v1::{AccountId, AccountPublic, ValidatorId, AssignmentId};
+use polkadot_primitives::v1::{AccountId, AccountPublic, AssignmentId, MAX_POV_SIZE, ValidatorId};
 use polkadot_runtime as polkadot;
 use rococo_runtime as rococo;
 use rococo_runtime::constants::currency::DOTS as ROC;
@@ -266,7 +266,10 @@ fn polkadot_staging_testnet_config_genesis(wasm_binary: &[u8]) -> polkadot::Gene
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance1: Default::default(),
-		pallet_babe: Default::default(),
+		pallet_babe: polkadot::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(polkadot::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: polkadot::AuthorityDiscoveryConfig { keys: vec![] },
@@ -453,13 +456,57 @@ fn westend_staging_testnet_config_genesis(wasm_binary: &[u8]) -> westend::Genesi
 			slash_reward_fraction: Perbill::from_percent(10),
 			..Default::default()
 		},
-		pallet_babe: Default::default(),
+		pallet_babe: westend::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(westend::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: westend::AuthorityDiscoveryConfig { keys: vec![] },
 		pallet_vesting: westend::VestingConfig { vesting: vec![] },
 		pallet_sudo: westend::SudoConfig {
 			key: endowed_accounts[0].clone(),
+		},
+		parachains_configuration: westend_runtime::ParachainsConfigurationConfig {
+			config: polkadot_runtime_parachains::configuration::HostConfiguration {
+				validation_upgrade_frequency: 600u32,
+				validation_upgrade_delay: 300,
+				acceptance_period: 1200,
+				max_code_size: 5 * 1024 * 1024,
+				max_pov_size: 50 * 1024 * 1024,
+				max_head_data_size: 32 * 1024,
+				group_rotation_frequency: 20,
+				chain_availability_period: 4,
+				thread_availability_period: 4,
+				max_upward_queue_count: 8,
+				max_upward_queue_size: 8 * 1024,
+				max_downward_message_size: 1024,
+				// this is approximatelly 4ms.
+				//
+				// Same as `4 * frame_support::weights::WEIGHT_PER_MILLIS`. We don't bother with
+				// an import since that's a made up number and should be replaced with a constant
+				// obtained by benchmarking anyway.
+				preferred_dispatchable_upward_messages_step_weight: 4 * 1_000_000_000,
+				max_upward_message_size: 1024,
+				max_upward_message_num_per_candidate: 5,
+				hrmp_open_request_ttl: 5,
+				hrmp_sender_deposit: 0,
+				hrmp_recipient_deposit: 0,
+				hrmp_channel_max_capacity: 8,
+				hrmp_channel_max_total_size: 8 * 1024,
+				hrmp_max_parachain_inbound_channels: 4,
+				hrmp_max_parathread_inbound_channels: 4,
+				hrmp_channel_max_message_size: 1024,
+				hrmp_max_parachain_outbound_channels: 4,
+				hrmp_max_parathread_outbound_channels: 4,
+				hrmp_max_message_num_per_candidate: 5,
+				no_show_slots: 2,
+				n_delay_tranches: 25,
+				needed_approvals: 2,
+				relay_vrf_modulo_samples: 10,
+				zeroth_delay_tranche_width: 0,
+				..Default::default()
+			},
 		},
 	}
 }
@@ -649,7 +696,10 @@ fn kusama_staging_testnet_config_genesis(wasm_binary: &[u8]) -> kusama::GenesisC
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance1: Default::default(),
-		pallet_babe: Default::default(),
+		pallet_babe: kusama::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: kusama::AuthorityDiscoveryConfig { keys: vec![] },
@@ -667,9 +717,12 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 	let endowed_accounts = vec![
 		// 5FeyRQmjtdHoPH56ASFW76AJEP1yaQC1K9aEMvJTF9nzt9S9
 		hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
+		hex!["4adf51a47b72795366d52285e329229c836ea7bbfe139dbe8fa0700c4f86fc56"].into(),
+		hex!["bc5820337071bd447f6fe51b1ffae07c38a7e094c3c82422d50a9b554b1cec42"].into(),
+		hex!["b44c58e50328768ac06ed44b842bfa69d86ea10f60bc36156c9ffc5e00867220"].into(),
 	];
 
-	// ./scripts/prepare-test-net.sh 8
+	// ./scripts/prepare-test-net.sh 12
 	let initial_authorities: Vec<(
 		AccountId,
 		AccountId,
@@ -750,8 +803,8 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 		hex!["821271c99c958b9220f1771d9f5e29af969edfa865631dba31e1ab7bc0582b75"].unchecked_into(),
 		//5CtgRR74VypK4h154s369abs78hDUxZSJqcbWsfXvsjcHJNA
 		hex!["2496f28d887d84705c6dae98aee8bf90fc5ad10bb5545eca1de6b68425b70f7c"].unchecked_into(),
-		),
-		(
+	),
+	(
 		//5C8AL1Zb4bVazgT3EgDxFgcow1L4SJjVu44XcLC9CrYqFN4N
 		hex!["02a2d8cfcf75dda85fafc04ace3bcb73160034ed1964c43098fb1fe831de1b16"].into(),
 		//5FLYy3YKsAnooqE4hCudttAsoGKbVG3hYYBtVzwMjJQrevPa
@@ -822,6 +875,78 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 		hex!["481538f8c2c011a76d7d57db11c2789a5e83b0f9680dc6d26211d2f9c021ae4c"].unchecked_into(),
 		//5DqAvikdpfRdk5rR35ZobZhqaC5bJXZcEuvzGtexAZP1hU3T
 		hex!["4e262811acdfe94528bfc3c65036080426a0e1301b9ada8d687a70ffcae99c26"].unchecked_into(),
+	),
+	(
+		//5F1PreCLdv6SoQDHANNN7kp5hY5HFXNkDuDc2YAQMWxgoHcA
+		hex!["822e5e83ce65950db4cc2ce1681b792ce1f74e7bfdff7bf3616fd7b3be62a11b"].into(),
+		//5F2AsF9i1tESLbgcTopP9u1RaiWJriQgwMUTd1h7qSntLKQG
+		hex!["82c5e33f0978de1366fc27eb7f53f53eca8662924b8cd068f49b9ec32e45cd17"].into(),
+		//5H126KCAtuXjMuGkEqyfBgyotxdB16zDk7acxbTBNscLAtvx
+		hex!["da5d922fd42e0b04083e573f715437932173492b426a111e02ca815cbb063a77"].unchecked_into(),
+		//5Dtf1B9CjNdnxsY9yiKDcWkVJRfU5wqHzaCyaDHaEoQedKpL
+		hex!["50ce685f11f94b5ae85f4f28cfc2a3d758661203165e2e89982063cdac05112e"].unchecked_into(),
+		//5GZMrtyt3LMmdhAMifnucqGnKgNR3Uo9J6weD33juoWtibFs
+		hex!["c6cbbcdf920794bf9badab4283e966f628806dc10d678b73cb2e6a2d530d697c"].unchecked_into(),
+		//5Cfu4KTh1DusuQqkN1nt8SKedcJHWG3tgaFCRUL8QYNwDNcw
+		hex!["1ad74b6d3a513f5a21e2798f0c42b24840b8f04b77f2430b753ab04f7730e37b"].unchecked_into(),
+		//5HCFgVh8xdV2u5Z8mz2zNhEqBpmP1c3zYBTpCX7PNNqGn2oT
+		hex!["e2ef0428b5d5cc35b3014bb1582006e0f8e1bbf1780286e25819aa00ced05d0d"].unchecked_into(),
+		//5EP27g9r5fiDgsP3B63Anu4m42Lq2n9EFUos6cpcCot1eEx1
+		hex!["6670593d6819d0c96beb4176078bf047d205e97970a39e0170e4538f8feb835a"].unchecked_into(),
+	),
+	(
+		//5GYpVyJnZwaiCf2J9CtcMVF6Tn5GFmkxAXhWQWczfSYv16dP
+		hex!["c6622b00c0564499009d7e6704c12270afc3984583f225a0963735bb7498a568"].into(),
+		//5Fk2VErYEA3q4mwCE9bG8N5qEt97Xcv3SRQSFxmk9wyziGX7
+		hex!["a2b1fcb23a7dd768a3e5ed73378c10c3739eb064064abbb44e2b76d3983c5d6b"].into(),
+		//5DyR8HUShf4oCndXFUQ6qWQxQ6jfYfQEWwt7FQKVTopJPSPc
+		hex!["546feb4c6fb286fd44d7c31c910bc3ed2613e62476382cb4566a42a79f116465"].unchecked_into(),
+		//5EE3bzrkPjG4PRcnE6wJcyCr4CtkaycxVPbJM3s2nHA1ChLz
+		hex!["5f98266bcd75c3c2bae28c054db968b969885f5c6cc17f3f907e5f28a7b809c0"].unchecked_into(),
+		//5CXduGnNZZdzeX7A5qxz6GVgCLzHcRtFWho84h3vkCEGFYNE
+		hex!["148a4fd63d2bf28ef69fd025ffd1e4d41eaaba1b00bb0a651f52ab3615edab75"].unchecked_into(),
+		//5FTfR6CBukMx5sKA8M2jguamxU71CQLSbEJX7ufR52ZSS9Xa
+		hex!["963720a3abd36fc1a5ab8326d098680d32ce30e1e92879c2eef34c70f1474a75"].unchecked_into(),
+		//5E7gf2xiCRSTXBVieyjDZTeXoGh71KzbTh5B4QbbWknDvBoc
+		hex!["5abe295d2b2a3ac7278ff54ea0dae06a6644002489343c8a8f0aa56e33bee151"].unchecked_into(),
+		//5F6TH5Rv2757StT1NEhMEwgUjmxXLU1HfQNqkVnePQodHEas
+		hex!["860a1d02ca0033b28f66b81ada958e2280c5c3076859a3aaaea750a745145c64"].unchecked_into(),
+	),
+	(
+		//5FKbPN6jc6EdHX5xWA3o5K9tgwCA5BaBRdNe1sNg1LM7s1tV
+		hex!["900f99517ebc274f21236d54abcf99acb8869988ebb125ce52feb911e70dbb3c"].into(),
+		//5G4bm6UqW7hg8FdXMUwuY5tjJ29dgNVs2XnGKR8jGd2yz2jX
+		hex!["b0dc699b935e47d958f0bfb8c7ed15015736b7ed1057277e8aab40ba4dcd4d4b"].into(),
+		//5HdprXUwQQVSoMj46WtutnuLY7ubVpds83As4x2YoSRBjUAX
+		hex!["f66fd24a3b1124c2acb21047e596f7b4e311b836cbe2026efa8e324b066bb46a"].unchecked_into(),
+		//5CZkmJVLQgbDuqbHTNFQz1gHBD319aUs4gqtxoUhcFMVLH6M
+		hex!["1627e7772c7f8b6c808654ad3365c6e0b2d63de71f585414af6cf2ac4ce679d6"].unchecked_into(),
+		//5Gp7bMDw8wGADWpKXWDF4sdT9kDy4Djr7WSfKZcsYufrpV6e
+		hex!["d20c63661724aadbf7a4d940457c74214fd0b5b1b2017f54aa02e300f913c254"].unchecked_into(),
+		//5DRjHUy6L7tTUTY3pQP3QqwUPFbzJD6VZusb1M7gf36UcKTT
+		hex!["3c4531864dcfe985a603c25cccc53529f4bfbaf7c9cda24dfa8d2b0bf7346c63"].unchecked_into(),
+		//5G7NhDyAHNvPRLnj8NWe9D6u5vFLxsYX7CxsSBfrn3jdovP4
+		hex!["b2fa2984700e2f75ea991ca19cb0edf50050856d757b3f92a8999d3670bf0605"].unchecked_into(),
+		//5HDpuZRiefpKkNjWqmaqrPGjCsitUidVnfRSmDQJ4nDJMnFY
+		hex!["e4221b99205b3d92e99e33998009226dec1f05ab7f486ee916f802993c93c70a"].unchecked_into(),
+	),
+	(
+		//5F1u4E4haGzznywW1HvRbJRjG1JqBKfo2hij5QaPwTQFayd5
+		hex!["8290aa0ae1f2267cea49666b18307c844ad35bf268fbeab0dd60dddc7100b34b"].into(),
+		//5Eq1ffTZqauMpPRbVAAdXJKb9uCqBCA5AuPkN8cB8cA8HrKT
+		hex!["7a4338295407fefe5855b465705d35cf82da5aaaa81d42221701c51b137e742f"].into(),
+		//5FTnzTpZKRL4cFmzZ6gCT8oBMUsiFbJbTGtjJhNAwJeb13v3
+		hex!["9650a0e88d31493564267cbeccb2f5b0fe7c848687f3c5d28c9a32c36727a435"].unchecked_into(),
+		//5DcoEc1RawH3NJk2ip3DpssYSQoDw1nzyEBkpNBpjJSg4Qdg
+		hex!["44b630e755d548538b972eb074f0235b7c14d06405eb2fa628d5d1ba88960e8a"].unchecked_into(),
+		//5Ebtg6YyrgepjngsnUzPckFW3fgBr542bKMhh7iUcjyNGrQc
+		hex!["70417d796a36b9831b537e719595daf4491dfc203f1a565a906c33599e922f1c"].unchecked_into(),
+		//5EUJG9YSMRo2wKwx37LA7g27c4M1UTYX53Ho89XZLVxwKDFr
+		hex!["6a76ed9ab247914421ba7aad0a937033a99f3d1140dfc58988ddcfa227399f33"].unchecked_into(),
+		//5E2Y1uSkdR7B2fxkdBKgEWF1nXxeTeBSrHjQB3p23hLffPpN
+		hex!["56d0d962fa568684ced7139faf1109594cc027a8d12884ed57c2ed4e354f927e"].unchecked_into(),
+		//5GQitFZroLBu15gAQXMgYZSaiJKw4NfLX9yPkaNwc7y2bE4M
+		hex!["c0354cd29659ede94aecc561c003cf4465b60c0b62e5ed874dd3296bd6282344"].unchecked_into(),
 	)];
 
 	const ENDOWMENT: u128 = 1_000_000 * ROC;
@@ -855,7 +980,10 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 				),
 			)).collect::<Vec<_>>(),
 		},
-		pallet_babe: Default::default(),
+		pallet_babe: rococo_runtime::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(rococo_runtime::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {
@@ -870,7 +998,7 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 				validation_upgrade_delay: 300,
 				acceptance_period: 1200,
 				max_code_size: 5 * 1024 * 1024,
-				max_pov_size: 50 * 1024 * 1024,
+				max_pov_size: MAX_POV_SIZE,
 				max_head_data_size: 32 * 1024,
 				group_rotation_frequency: 20,
 				chain_availability_period: 4,
@@ -1298,7 +1426,10 @@ pub fn polkadot_testnet_genesis(
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance1: Default::default(),
-		pallet_babe: Default::default(),
+		pallet_babe: polkadot::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(polkadot::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: polkadot::AuthorityDiscoveryConfig { keys: vec![] },
@@ -1393,7 +1524,10 @@ pub fn kusama_testnet_genesis(
 			phantom: Default::default(),
 		},
 		pallet_membership_Instance1: Default::default(),
-		pallet_babe: Default::default(),
+		pallet_babe: kusama::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(kusama::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: kusama::AuthorityDiscoveryConfig { keys: vec![] },
@@ -1477,12 +1611,56 @@ pub fn westend_testnet_genesis(
 			slash_reward_fraction: Perbill::from_percent(10),
 			..Default::default()
 		},
-		pallet_babe: Default::default(),
+		pallet_babe: westend::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(westend::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: westend::AuthorityDiscoveryConfig { keys: vec![] },
 		pallet_vesting: westend::VestingConfig { vesting: vec![] },
 		pallet_sudo: westend::SudoConfig { key: root_key },
+		parachains_configuration: westend_runtime::ParachainsConfigurationConfig {
+			config: polkadot_runtime_parachains::configuration::HostConfiguration {
+				validation_upgrade_frequency: 600u32,
+				validation_upgrade_delay: 300,
+				acceptance_period: 1200,
+				max_code_size: 5 * 1024 * 1024,
+				max_pov_size: 50 * 1024 * 1024,
+				max_head_data_size: 32 * 1024,
+				group_rotation_frequency: 20,
+				chain_availability_period: 4,
+				thread_availability_period: 4,
+				max_upward_queue_count: 8,
+				max_upward_queue_size: 8 * 1024,
+				max_downward_message_size: 1024,
+				// this is approximatelly 4ms.
+				//
+				// Same as `4 * frame_support::weights::WEIGHT_PER_MILLIS`. We don't bother with
+				// an import since that's a made up number and should be replaced with a constant
+				// obtained by benchmarking anyway.
+				preferred_dispatchable_upward_messages_step_weight: 4 * 1_000_000_000,
+				max_upward_message_size: 1024,
+				max_upward_message_num_per_candidate: 5,
+				hrmp_open_request_ttl: 5,
+				hrmp_sender_deposit: 0,
+				hrmp_recipient_deposit: 0,
+				hrmp_channel_max_capacity: 8,
+				hrmp_channel_max_total_size: 8 * 1024,
+				hrmp_max_parachain_inbound_channels: 4,
+				hrmp_max_parathread_inbound_channels: 4,
+				hrmp_channel_max_message_size: 1024,
+				hrmp_max_parachain_outbound_channels: 4,
+				hrmp_max_parathread_outbound_channels: 4,
+				hrmp_max_message_num_per_candidate: 5,
+				no_show_slots: 2,
+				n_delay_tranches: 25,
+				needed_approvals: 2,
+				relay_vrf_modulo_samples: 10,
+				zeroth_delay_tranche_width: 0,
+				..Default::default()
+			},
+		},
 	}
 }
 
@@ -1531,7 +1709,10 @@ pub fn rococo_testnet_genesis(
 				),
 			)).collect::<Vec<_>>(),
 		},
-		pallet_babe: Default::default(),
+		pallet_babe: rococo_runtime::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(rococo_runtime::BABE_GENESIS_EPOCH_CONFIG),
+		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
 		pallet_authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {

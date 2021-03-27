@@ -23,15 +23,15 @@ use futures::{FutureExt, SinkExt};
 
 use polkadot_erasure_coding::branch_hash;
 use polkadot_node_network_protocol::request_response::{
-	request::{OutgoingRequest, RequestError, Requests},
-	v1::{AvailabilityFetchingRequest, AvailabilityFetchingResponse},
+	request::{OutgoingRequest, RequestError, Requests, Recipient},
+	v1::{ChunkFetchingRequest, ChunkFetchingResponse},
 };
 use polkadot_primitives::v1::{
 	AuthorityDiscoveryId, BlakeTwo256, ErasureChunk, GroupIndex, Hash, HashT, OccupiedCore,
 	SessionIndex,
 };
 use polkadot_subsystem::messages::{
-	AllMessages, AvailabilityStoreMessage, NetworkBridgeMessage,
+	AllMessages, AvailabilityStoreMessage, NetworkBridgeMessage, IfDisconnected,
 };
 use polkadot_subsystem::{SubsystemContext, jaeger};
 
@@ -106,7 +106,7 @@ struct RunningTask {
 	group: Vec<AuthorityDiscoveryId>,
 
 	/// The request to send.
-	request: AvailabilityFetchingRequest,
+	request: ChunkFetchingRequest,
 
 	/// Root hash, for verifying the chunks validity.
 	erasure_root: Hash,
@@ -116,7 +116,7 @@ struct RunningTask {
 
 	/// Sender for communicating with other subsystems and reporting results.
 	sender: mpsc::Sender<FromFetchTask>,
-	
+
 	/// Prometheues metrics for reporting results.
 	metrics: Metrics,
 
@@ -145,8 +145,8 @@ impl FetchTaskConfig {
 			};
 		}
 
-		let mut span = jaeger::candidate_hash_span(&core.candidate_hash, "availability-distribution");
-		span.add_stage(jaeger::Stage::AvailabilityDistribution);
+		let span = jaeger::Span::new(core.candidate_hash, "availability-distribution")
+			.with_stage(jaeger::Stage::AvailabilityDistribution);
 
 		let prepared_running = RunningTask {
 			session_index: session_info.session_index,
@@ -154,7 +154,7 @@ impl FetchTaskConfig {
 			group: session_info.validator_groups.get(core.group_responsible.0 as usize)
 				.expect("The responsible group of a candidate should be available in the corresponding session. qed.")
 				.clone(),
-			request: AvailabilityFetchingRequest {
+			request: ChunkFetchingRequest {
 				candidate_hash: core.candidate_hash,
 				index: session_info.our_index,
 			},
@@ -263,10 +263,9 @@ impl RunningTask {
 		let mut bad_validators = Vec::new();
 		let mut label = FAILED;
 		let mut count: u32 = 0;
-		let mut _span = self.span.child_builder("fetch-task")
+		let mut _span = self.span.child("fetch-task")
 			.with_chunk_index(self.request.index.0)
-			.with_relay_parent(&self.relay_parent)
-			.build();
+			.with_relay_parent(self.relay_parent);
 		// Try validators in reverse order:
 		while let Some(validator) = self.group.pop() {
 			let _try_span = _span.child("try");
@@ -293,10 +292,10 @@ impl RunningTask {
 				}
 			};
 			let chunk = match resp {
-				AvailabilityFetchingResponse::Chunk(resp) => {
+				ChunkFetchingResponse::Chunk(resp) => {
 					resp.recombine_into_chunk(&self.request)
 				}
-				AvailabilityFetchingResponse::NoSuchChunk => {
+				ChunkFetchingResponse::NoSuchChunk => {
 					tracing::debug!(
 						target: LOG_TARGET,
 						validator = ?validator,
@@ -328,14 +327,14 @@ impl RunningTask {
 	async fn do_request(
 		&mut self,
 		validator: &AuthorityDiscoveryId,
-	) -> std::result::Result<AvailabilityFetchingResponse, TaskError> {
+	) -> std::result::Result<ChunkFetchingResponse, TaskError> {
 		let (full_request, response_recv) =
-			OutgoingRequest::new(validator.clone(), self.request);
-		let requests = Requests::AvailabilityFetching(full_request);
+			OutgoingRequest::new(Recipient::Authority(validator.clone()), self.request);
+		let requests = Requests::ChunkFetching(full_request);
 
 		self.sender
 			.send(FromFetchTask::Message(AllMessages::NetworkBridge(
-				NetworkBridgeMessage::SendRequests(vec![requests]),
+				NetworkBridgeMessage::SendRequests(vec![requests], IfDisconnected::TryConnect)
 			)))
 			.await
 			.map_err(|_| TaskError::ShuttingDown)?;

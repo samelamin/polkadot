@@ -44,7 +44,7 @@ use polkadot_node_primitives::ValidationResult;
 use polkadot_node_primitives::approval::{
 	IndirectAssignmentCert, IndirectSignedApprovalVote, ApprovalVote, DelayTranche,
 };
-use polkadot_node_jaeger::Stage as JaegerStage;
+use polkadot_node_jaeger as jaeger;
 use parity_scale_codec::Encode;
 use sc_keystore::LocalKeystore;
 use sp_consensus_slots::Slot;
@@ -75,7 +75,7 @@ mod persisted_entries;
 mod tests;
 
 const APPROVAL_SESSIONS: SessionIndex = 6;
-const LOG_TARGET: &str = "approval_voting";
+const LOG_TARGET: &str = "parachain::approval-voting";
 
 /// Configuration for the approval voting subsystem
 pub struct Config {
@@ -322,6 +322,11 @@ impl Wakeups {
 		self.wakeups.entry(tick).or_default().push((block_hash, candidate_hash));
 	}
 
+	// Get the wakeup for a particular block/candidate combo, if any.
+	fn wakeup_for(&self, block_hash: Hash, candidate_hash: CandidateHash) -> Option<Tick> {
+		self.reverse_wakeups.get(&(block_hash, candidate_hash)).map(|t| *t)
+	}
+
 	// Returns the next wakeup. this future never returns if there are no wakeups.
 	async fn next(&mut self, clock: &(dyn Clock + Sync)) -> (Tick, Hash, CandidateHash) {
 		match self.first() {
@@ -477,6 +482,7 @@ async fn run<C>(
 					db_writer,
 					next_msg?,
 					&mut last_finalized_height,
+					&wakeups,
 				).await?
 			}
 			background_request = background_rx.next().fuse() => {
@@ -578,13 +584,15 @@ async fn handle_from_overseer(
 	db_writer: &dyn KeyValueDB,
 	x: FromOverseer<ApprovalVotingMessage>,
 	last_finalized_height: &mut Option<BlockNumber>,
+	wakeups: &Wakeups,
 ) -> SubsystemResult<Vec<Action>> {
 
 	let actions = match x {
 		FromOverseer::Signal(OverseerSignal::ActiveLeaves(update)) => {
 			let mut actions = Vec::new();
 
-			for (head, _span) in update.activated {
+			for activated in update.activated {
+				let head = activated.hash;
 				match import::handle_new_head(
 					ctx,
 					state,
@@ -598,9 +606,9 @@ async fn handle_from_overseer(
 						for block_batch in block_imported_candidates {
 							tracing::debug!(
 								target: LOG_TARGET,
-								"Imported new block {} with {} included candidates",
-								block_batch.block_hash,
-								block_batch.imported_candidates.len(),
+								block_hash = ?block_batch.block_hash,
+								num_candidates = block_batch.imported_candidates.len(),
+								"Imported new block.",
 							);
 
 							for (c_hash, c_entry) in block_batch.imported_candidates {
@@ -614,11 +622,11 @@ async fn handle_from_overseer(
 									let tick = our_tranche as Tick + block_batch.block_tick;
 									tracing::trace!(
 										target: LOG_TARGET,
-										"Scheduling first wakeup at tranche {} for candidate {} in block ({}, tick={})",
-										our_tranche,
-										c_hash,
-										block_batch.block_hash,
-										block_batch.block_tick,
+										tranche = our_tranche,
+										candidate_hash = ?c_hash,
+										block_hash = ?block_batch.block_hash,
+										block_tick = block_batch.block_tick,
+										"Scheduling first wakeup.",
 									);
 
 									// Our first wakeup will just be the tranche of our assignment,
@@ -660,7 +668,7 @@ async fn handle_from_overseer(
 				check_and_import_approval(state, metrics, a, |r| { let _ = res.send(r); })?.0
 			}
 			ApprovalVotingMessage::ApprovedAncestor(target, lower_bound, res ) => {
-				match handle_approved_ancestor(ctx, &state.db, target, lower_bound).await {
+				match handle_approved_ancestor(ctx, &state.db, target, lower_bound, wakeups).await {
 					Ok(v) => {
 						let _ = res.send(v);
 					}
@@ -713,13 +721,15 @@ async fn handle_approved_ancestor(
 	db: &impl DBReader,
 	target: Hash,
 	lower_bound: BlockNumber,
+	wakeups: &Wakeups,
 ) -> SubsystemResult<Option<(Hash, BlockNumber)>> {
 	const MAX_TRACING_WINDOW: usize = 200;
+	const ABNORMAL_DEPTH_THRESHOLD: usize = 5;
 
 	use bitvec::{order::Lsb0, vec::BitVec};
 
-	let mut span = polkadot_node_jaeger::hash_span(&target, "approved-ancestor");
-	span.add_stage(JaegerStage::ApprovalChecking);
+	let mut span = jaeger::Span::new(&target, "approved-ancestor")
+		.with_stage(jaeger::Stage::ApprovalChecking);
 
 	let mut all_approved_max = None;
 
@@ -737,8 +747,8 @@ async fn handle_approved_ancestor(
 
 	if target_number <= lower_bound { return Ok(None) }
 
-	span.add_string_tag("target-number", &format!("{}", target_number));
-	span.add_string_tag("target-hash", &format!("{}", target));
+	span.add_string_fmt_debug_tag("target-number", target_number);
+	span.add_string_fmt_debug_tag("target-hash", target);
 
 	// request ancestors up to but not including the lower bound,
 	// as a vote on the lower bound is implied if we cannot find
@@ -789,8 +799,86 @@ async fn handle_approved_ancestor(
 				// ancestry is moving backwards.
 				all_approved_max = Some((block_hash, target_number - i as BlockNumber));
 			}
+		} else if bits.len() <= ABNORMAL_DEPTH_THRESHOLD {
+			all_approved_max = None;
 		} else {
 			all_approved_max = None;
+
+			let unapproved: Vec<_> = entry.unapproved_candidates().collect();
+			tracing::debug!(
+				target: LOG_TARGET,
+				"Block {} is {} blocks deep and has {}/{} candidates unapproved",
+				block_hash,
+				bits.len() - 1,
+				unapproved.len(),
+				entry.candidates().len(),
+			);
+
+			for candidate_hash in unapproved {
+				match db.load_candidate_entry(&candidate_hash)? {
+					None => {
+						tracing::warn!(
+							target: LOG_TARGET,
+							?candidate_hash,
+							"Missing expected candidate in DB",
+						);
+
+						continue;
+					}
+					Some(c_entry) => {
+						match c_entry.approval_entry(&block_hash) {
+							None => {
+								tracing::warn!(
+									target: LOG_TARGET,
+									?candidate_hash,
+									?block_hash,
+									"Missing expected approval entry under candidate.",
+								);
+							}
+							Some(a_entry) => {
+								let n_assignments = a_entry.n_assignments();
+								let n_approvals = c_entry.approvals().count_ones();
+
+								let status = || format!("{}/{}/{}",
+									n_assignments,
+									n_approvals,
+									a_entry.n_validators(),
+								);
+
+								match a_entry.our_assignment() {
+									None => tracing::debug!(
+										target: LOG_TARGET,
+										?candidate_hash,
+										?block_hash,
+										status = %status(),
+										"no assignment."
+									),
+									Some(a) => {
+										let tranche = a.tranche();
+										let triggered = a.triggered();
+
+										let next_wakeup = wakeups.wakeup_for(
+											block_hash,
+											candidate_hash,
+										);
+
+										tracing::debug!(
+											target: LOG_TARGET,
+											?candidate_hash,
+											?block_hash,
+											tranche,
+											?next_wakeup,
+											status = %status(),
+											triggered,
+											"assigned."
+										);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -822,8 +910,8 @@ async fn handle_approved_ancestor(
 
 	match all_approved_max {
 		Some((ref hash, ref number)) => {
-			span.add_string_tag("approved-number", &format!("{}", number));
-			span.add_string_tag("approved-hash", &format!("{:?}", hash));
+			span.add_uint_tag("approved-number", *number as u64);
+			span.add_string_fmt_debug_tag("approved-hash", hash);
 		}
 		None => {
 			span.add_string_tag("reached-lower-bound", "true");
@@ -898,20 +986,20 @@ fn schedule_wakeup_action(
 	};
 
 	match maybe_action {
-		Some(Action::ScheduleWakeup { ref tick, .. }) => tracing::debug!(
+		Some(Action::ScheduleWakeup { ref tick, .. }) => tracing::trace!(
 			target: LOG_TARGET,
-			"Scheduling next wakeup at {} for candidate {} under block ({}, tick={})",
 			tick,
-			candidate_hash,
-			block_hash,
+			?candidate_hash,
+			?block_hash,
 			block_tick,
+			"Scheduling next wakeup.",
 		),
-		None => tracing::debug!(
+		None => tracing::trace!(
 			target: LOG_TARGET,
-			"No wakeup needed for candidate {} under block ({}, tick={})",
-			candidate_hash,
-			block_hash,
+			?candidate_hash,
+			?block_hash,
 			block_tick,
+			"No wakeup needed.",
 		),
 		Some(_) => {} // unreachable
 	}
@@ -1006,9 +1094,10 @@ fn check_and_import_assignment(
 		} else {
 			tracing::trace!(
 				target: LOG_TARGET,
-				"Imported assignment from validator {} on candidate {:?}",
-				assignment.validator.0,
-				(assigned_candidate_hash, candidate_entry.candidate_receipt().descriptor.para_id),
+				validator = assignment.validator.0,
+				candidate_hash = ?assigned_candidate_hash,
+				para_id = ?candidate_entry.candidate_receipt().descriptor.para_id,
+				"Imported assignment.",
 			);
 
 			AssignmentCheckResult::Accepted
@@ -1109,9 +1198,11 @@ fn check_and_import_approval<T>(
 
 	tracing::trace!(
 		target: LOG_TARGET,
-		"Importing approval vote from validator {:?} on candidate {:?}",
-		(approval.validator, &pubkey),
-		(approved_candidate_hash, candidate_entry.candidate_receipt().descriptor.para_id),
+		validator_index = approval.validator.0,
+		validator = ?pubkey,
+		candidate_hash = ?approved_candidate_hash,
+		para_id = ?candidate_entry.candidate_receipt().descriptor.para_id,
+		"Importing approval vote",
 	);
 
 	let actions = import_checked_approval(
@@ -1226,13 +1317,15 @@ fn check_and_apply_full_approval(
 			required_tranches.clone(),
 		);
 
-		if let approval_checking::Check::Approved(no_shows) = check {
+		if check.is_approved() {
 			tracing::trace!(
 				target: LOG_TARGET,
-				"Candidate approved {} under block {}",
-				candidate_hash,
-				block_hash,
+				?candidate_hash,
+				?block_hash,
+				"Candidate approved under block.",
 			);
+
+			let no_shows = check.known_no_shows();
 
 			let was_approved = block_entry.is_fully_approved();
 
@@ -1313,15 +1406,13 @@ fn process_wakeup(
 	candidate_hash: CandidateHash,
 	expected_tick: Tick,
 ) -> SubsystemResult<Vec<Action>> {
-	let mut span = polkadot_node_jaeger::descriptor_span(
+	let _span = jaeger::Span::from_encodable(
 		(relay_block, candidate_hash, expected_tick),
 		"process-approval-wakeup",
-	);
-
-	span.add_string_tag("relay-parent", &format!("{:?}", relay_block));
-	span.add_string_tag("candidate-hash", &format!("{:?}", candidate_hash));
-	span.add_string_tag("tick", &format!("{:?}", expected_tick));
-	span.add_stage(JaegerStage::ApprovalChecking);
+	)
+	.with_relay_parent(relay_block)
+	.with_candidate(candidate_hash)
+	.with_stage(jaeger::Stage::ApprovalChecking);
 
 	let block_entry = state.db.load_block_entry(&relay_block)?;
 	let candidate_entry = state.db.load_candidate_entry(&candidate_hash)?;
@@ -1354,12 +1445,12 @@ fn process_wakeup(
 
 	let tranche_now = state.clock.tranche_now(state.slot_duration_millis, block_entry.slot());
 
-	tracing::debug!(
+	tracing::trace!(
 		target: LOG_TARGET,
-		"Processing wakeup at tranche {} for candidate {} under block {}",
-		tranche_now,
-		candidate_hash,
-		relay_block,
+		tranche = tranche_now,
+		?candidate_hash,
+		block_hash = ?relay_block,
+		"Processing wakeup",
 	);
 
 	let (should_trigger, backing_group) = {
@@ -1413,11 +1504,12 @@ fn process_wakeup(
 			.position(|(_, h)| &candidate_hash == h);
 
 		if let Some(i) = index_in_candidate {
-			tracing::debug!(
+			tracing::trace!(
 				target: LOG_TARGET,
-				"Launching approval work for candidate {:?} in block {}",
-				(&candidate_hash, candidate_entry.candidate_receipt().descriptor.para_id),
-				relay_block,
+				?candidate_hash,
+				para_id = ?candidate_entry.candidate_receipt().descriptor.para_id,
+				block_hash = ?relay_block,
+				"Launching approval work.",
 			);
 
 			// sanity: should always be present.
@@ -1472,10 +1564,11 @@ async fn launch_approval(
 
 	let candidate_hash = candidate.hash();
 
-	tracing::debug!(
+	tracing::trace!(
 		target: LOG_TARGET,
-		"Recovering data for candidate {:?}",
-		(candidate_hash, candidate.descriptor.para_id),
+		?candidate_hash,
+		para_id = ?candidate.descriptor.para_id,
+		"Recovering data.",
 	);
 
 	ctx.send_message(AvailabilityRecoveryMessage::RecoverAvailableData(
@@ -1576,10 +1669,11 @@ async fn launch_approval(
 				// Validation checked out. Issue an approval command. If the underlying service is unreachable,
 				// then there isn't anything we can do.
 
-				tracing::debug!(
+				tracing::trace!(
 					target: LOG_TARGET,
-					"Candidate Valid {:?}",
-					(candidate_hash, para_id),
+					?candidate_hash,
+					?para_id,
+					"Candidate Valid",
 				);
 
 				let _ = background_tx.send(BackgroundRequest::ApprovalVote(ApprovalVoteRequest {
@@ -1697,8 +1791,8 @@ async fn issue_approval(
 
 	tracing::debug!(
 		target: LOG_TARGET,
-		"Issuing approval vote for candidate {:?}",
-		candidate_hash,
+		?candidate_hash,
+		"Issuing approval vote",
 	);
 
 	let actions = import_checked_approval(

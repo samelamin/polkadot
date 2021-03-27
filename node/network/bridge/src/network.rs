@@ -29,7 +29,7 @@ use sc_network::{IfDisconnected, NetworkService, OutboundFailure, RequestFailure
 
 use polkadot_node_network_protocol::{
 	peer_set::PeerSet,
-	request_response::{OutgoingRequest, Requests},
+	request_response::{OutgoingRequest, Requests, Recipient},
 	PeerId, UnifiedReputationChange as Rep,
 };
 use polkadot_primitives::v1::{Block, Hash};
@@ -90,6 +90,8 @@ where
 pub enum NetworkAction {
 	/// Note a change in reputation for a peer.
 	ReputationChange(PeerId, Rep),
+	/// Disconnect a peer from the given peer-set.
+	DisconnectPeer(PeerId, PeerSet),
 	/// Write a notification to a given peer on the given peer-set.
 	WriteNotification(PeerId, PeerSet, Vec<u8>),
 }
@@ -113,6 +115,7 @@ pub trait Network: Send + 'static {
 		&self,
 		authority_discovery: &mut AD,
 		req: Requests,
+		if_disconnected: IfDisconnected,
 	);
 
 	/// Report a given peer as either beneficial (+) or costly (-) according to the given scalar.
@@ -124,6 +127,20 @@ pub trait Network: Send + 'static {
 		async move {
 			self.action_sink()
 				.send(NetworkAction::ReputationChange(who, cost_benefit))
+				.await
+		}
+		.boxed()
+	}
+
+	/// Disconnect a given peer from the peer set specified without harming reputation.
+	fn disconnect_peer(
+		&mut self,
+		who: PeerId,
+		peer_set: PeerSet,
+	) -> BoxFuture<SubsystemResult<()>> {
+		async move {
+			self.action_sink()
+				.send(NetworkAction::DisconnectPeer(who, peer_set))
 				.await
 		}
 		.boxed()
@@ -178,6 +195,9 @@ impl Network for Arc<NetworkService<Block, Hash>> {
 						);
 						self.0.report_peer(peer, cost_benefit.into_base_rep())
 					}
+					NetworkAction::DisconnectPeer(peer, peer_set) => self
+						.0
+						.disconnect_peer(peer, peer_set.into_protocol_name()),
 					NetworkAction::WriteNotification(peer, peer_set, message) => self
 						.0
 						.write_notification(peer, peer_set.into_protocol_name(), message),
@@ -202,6 +222,7 @@ impl Network for Arc<NetworkService<Block, Hash>> {
 		&self,
 		authority_discovery: &mut AD,
 		req: Requests,
+		if_disconnected: IfDisconnected,
 	) {
 		let (
 			protocol,
@@ -212,14 +233,18 @@ impl Network for Arc<NetworkService<Block, Hash>> {
 			},
 		) = req.encode_request();
 
-		let peer_id = authority_discovery
-			.get_addresses_by_authority_id(peer)
-			.await
-			.and_then(|addrs| {
-				addrs
-					.into_iter()
-					.find_map(|addr| peer_id_from_multiaddr(&addr))
-			});
+		let peer_id = match peer {
+			Recipient::Peer(peer_id) =>  Some(peer_id),
+			Recipient::Authority(authority) =>
+				authority_discovery
+				.get_addresses_by_authority_id(authority)
+				.await
+				.and_then(|addrs| {
+					addrs
+						.into_iter()
+						.find_map(|addr| peer_id_from_multiaddr(&addr))
+				}),
+			};
 
 		let peer_id = match peer_id {
 			None => {
@@ -244,7 +269,7 @@ impl Network for Arc<NetworkService<Block, Hash>> {
 			protocol.into_protocol_name(),
 			payload,
 			pending_response,
-			IfDisconnected::TryConnect,
+			if_disconnected,
 		);
 	}
 }

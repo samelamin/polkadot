@@ -33,7 +33,7 @@ use crate::{LOG_TARGET, metrics::{Metrics, SUCCEEDED, FAILED, NOT_FOUND}};
 /// Any errors of `answer_request` will simply be logged.
 pub async fn answer_request_log<Context>(
 	ctx: &mut Context,
-	req: IncomingRequest<v1::AvailabilityFetchingRequest>,
+	req: IncomingRequest<v1::ChunkFetchingRequest>,
 	metrics: &Metrics,
 ) -> ()
 where
@@ -59,24 +59,33 @@ where
 /// Returns: Ok(true) if chunk was found and served.
 pub async fn answer_request<Context>(
 	ctx: &mut Context,
-	req: IncomingRequest<v1::AvailabilityFetchingRequest>,
+	req: IncomingRequest<v1::ChunkFetchingRequest>,
 ) -> Result<bool>
 where
 	Context: SubsystemContext,
 {
-	let mut span = jaeger::candidate_hash_span(&req.payload.candidate_hash, "answer-request");
-	span.add_stage(jaeger::Stage::AvailabilityDistribution);
-	let _child_span = span.child_builder("answer-chunk-request")
-		.with_chunk_index(req.payload.index.0)
-		.build();
+	let span = jaeger::Span::new(req.payload.candidate_hash, "answer-request")
+		.with_stage(jaeger::Stage::AvailabilityDistribution);
+
+	let _child_span = span.child("answer-chunk-request")
+		.with_chunk_index(req.payload.index.0);
 
 	let chunk = query_chunk(ctx, req.payload.candidate_hash, req.payload.index).await?;
 
 	let result = chunk.is_some();
 
+	tracing::trace!(
+		target: LOG_TARGET,
+		hash = ?req.payload.candidate_hash,
+		index = ?req.payload.index,
+		peer = ?req.peer,
+		has_data = ?chunk.is_some(),
+		"Serving chunk",
+	);
+
 	let response = match chunk {
-		None => v1::AvailabilityFetchingResponse::NoSuchChunk,
-		Some(chunk) => v1::AvailabilityFetchingResponse::Chunk(chunk.into()),
+		None => v1::ChunkFetchingResponse::NoSuchChunk,
+		Some(chunk) => v1::ChunkFetchingResponse::Chunk(chunk.into()),
 	};
 
 	req.send_response(response).map_err(|_| Error::SendResponse)?;
@@ -99,5 +108,14 @@ where
 	))
 	.await;
 
-	rx.await.map_err(|e| Error::QueryChunkResponseChannel(e))
+	rx.await.map_err(|e| {
+		tracing::trace!(
+			target: LOG_TARGET,
+			?validator_index,
+			?candidate_hash,
+			error = ?e,
+			"Error retrieving chunk",
+		);
+		Error::QueryChunkResponseChannel(e)
+	})
 }

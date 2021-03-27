@@ -39,14 +39,20 @@ pub trait IsRequest {
 #[derive(Debug)]
 pub enum Requests {
 	/// Request an availability chunk from a node.
-	AvailabilityFetching(OutgoingRequest<v1::AvailabilityFetchingRequest>),
+	ChunkFetching(OutgoingRequest<v1::ChunkFetchingRequest>),
+	/// Fetch a collation from a collator which previously announced it.
+	CollationFetching(OutgoingRequest<v1::CollationFetchingRequest>),
+	/// Request full available data from a node.
+	AvailableDataFetching(OutgoingRequest<v1::AvailableDataFetchingRequest>),
 }
 
 impl Requests {
 	/// Get the protocol this request conforms to.
 	pub fn get_protocol(&self) -> Protocol {
 		match self {
-			Self::AvailabilityFetching(_) => Protocol::AvailabilityFetching,
+			Self::ChunkFetching(_) => Protocol::ChunkFetching,
+			Self::CollationFetching(_) => Protocol::CollationFetching,
+			Self::AvailableDataFetching(_) => Protocol::AvailableDataFetching,
 		}
 	}
 
@@ -59,9 +65,20 @@ impl Requests {
 	/// contained in the enum.
 	pub fn encode_request(self) -> (Protocol, OutgoingRequest<Vec<u8>>) {
 		match self {
-			Self::AvailabilityFetching(r) => r.encode_request(),
+			Self::ChunkFetching(r) => r.encode_request(),
+			Self::CollationFetching(r) => r.encode_request(),
+			Self::AvailableDataFetching(r) => r.encode_request(),
 		}
 	}
+}
+
+/// Potential recipients of an outgoing request.
+#[derive(Debug, Eq, Hash, PartialEq)]
+pub enum Recipient {
+	/// Recipient is a regular peer and we know its peer id.
+	Peer(PeerId),
+	/// Recipient is a validator, we address it via this `AuthorityDiscoveryId`.
+	Authority(AuthorityDiscoveryId),
 }
 
 /// A request to be sent to the network bridge, including a sender for sending responses/failures.
@@ -71,7 +88,7 @@ impl Requests {
 #[derive(Debug)]
 pub struct OutgoingRequest<Req> {
 	/// Intendent recipient of this request.
-	pub peer: AuthorityDiscoveryId,
+	pub peer: Recipient,
 	/// The actual request to send over the wire.
 	pub payload: Req,
 	/// Sender which is used by networking to get us back a response.
@@ -79,6 +96,7 @@ pub struct OutgoingRequest<Req> {
 }
 
 /// Any error that can occur when sending a request.
+#[derive(Debug)]
 pub enum RequestError {
 	/// Response could not be decoded.
 	InvalidResponse(DecodingError),
@@ -90,6 +108,9 @@ pub enum RequestError {
 	Canceled(oneshot::Canceled),
 }
 
+/// Responses received for an `OutgoingRequest`.
+pub type OutgoingResult<Res> = Result<Res, RequestError>;
+
 impl<Req> OutgoingRequest<Req>
 where
 	Req: IsRequest + Encode,
@@ -100,11 +121,11 @@ where
 	/// It will contain a sender that is used by the networking for sending back responses. The
 	/// connected receiver is returned as the second element in the returned tuple.
 	pub fn new(
-		peer: AuthorityDiscoveryId,
+		peer: Recipient,
 		payload: Req,
 	) -> (
 		Self,
-		impl Future<Output = Result<Req::Response, RequestError>>,
+		impl Future<Output = OutgoingResult<Req::Response>>,
 	) {
 		let (tx, rx) = oneshot::channel();
 		let r = Self {
@@ -201,7 +222,7 @@ where
 /// Future for actually receiving a typed response for an OutgoingRequest.
 async fn receive_response<Req>(
 	rec: oneshot::Receiver<Result<Vec<u8>, network::RequestFailure>>,
-) -> Result<Req::Response, RequestError>
+) -> OutgoingResult<Req::Response>
 where
 	Req: IsRequest,
 	Req::Response: Decode,
