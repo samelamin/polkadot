@@ -40,6 +40,9 @@ pub mod request_response;
 
 /// A version of the protocol.
 pub type ProtocolVersion = u32;
+/// The minimum amount of peers to send gossip messages to.
+pub const MIN_GOSSIP_PEERS: usize = 25;
+
 
 /// An error indicating that this the over-arching message type had the wrong variant
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -289,7 +292,7 @@ pub mod v1 {
 	use std::convert::TryFrom;
 
 	use polkadot_primitives::v1::{
-		CandidateIndex, CollatorId, CompressedPoV, Hash, Id as ParaId, SignedAvailabilityBitfield,
+		CandidateIndex, CollatorId, Hash, Id as ParaId, SignedAvailabilityBitfield,
 		CollatorSignature,
 	};
 	use polkadot_node_primitives::{
@@ -303,19 +306,6 @@ pub mod v1 {
 		/// A signed availability bitfield for a given relay-parent hash.
 		#[codec(index = 0)]
 		Bitfield(Hash, SignedAvailabilityBitfield),
-	}
-
-	/// Network messages used by the PoV distribution subsystem.
-	#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
-	pub enum PoVDistributionMessage {
-		/// Notification that we are awaiting the given PoVs (by hash) against a
-		/// specific relay-parent hash.
-		#[codec(index = 0)]
-		Awaiting(Hash, Vec<Hash>),
-		/// Notification of an awaited PoV, in a given relay-parent context.
-		/// (relay_parent, pov_hash, compressed_pov)
-		#[codec(index = 1)]
-		SendPoV(Hash, Hash, CompressedPoV),
 	}
 
 	/// Network messages used by the statement distribution subsystem.
@@ -345,11 +335,11 @@ pub mod v1 {
 		/// Declare the intent to advertise collations under a collator ID, attaching a
 		/// signature of the `PeerId` of the node using the given collator ID key.
 		#[codec(index = 0)]
-		Declare(CollatorId, CollatorSignature),
+		Declare(CollatorId, ParaId, CollatorSignature),
 		/// Advertise a collation to a validator. Can only be sent once the peer has
 		/// declared that they are a collator with given ID.
 		#[codec(index = 1)]
-		AdvertiseCollation(Hash, ParaId),
+		AdvertiseCollation(Hash),
 		/// A collation sent to a validator was seconded.
 		#[codec(index = 4)]
 		CollationSeconded(SignedFullStatement),
@@ -361,9 +351,6 @@ pub mod v1 {
 		/// Bitfield distribution messages
 		#[codec(index = 1)]
 		BitfieldDistribution(BitfieldDistributionMessage),
-		/// PoV Distribution messages
-		#[codec(index = 2)]
-		PoVDistribution(PoVDistributionMessage),
 		/// Statement distribution messages
 		#[codec(index = 3)]
 		StatementDistribution(StatementDistributionMessage),
@@ -373,7 +360,6 @@ pub mod v1 {
 	}
 
 	impl_try_from!(ValidationProtocol, BitfieldDistribution, BitfieldDistributionMessage);
-	impl_try_from!(ValidationProtocol, PoVDistribution, PoVDistributionMessage);
 	impl_try_from!(ValidationProtocol, StatementDistribution, StatementDistributionMessage);
 	impl_try_from!(ValidationProtocol, ApprovalDistribution, ApprovalDistributionMessage);
 
