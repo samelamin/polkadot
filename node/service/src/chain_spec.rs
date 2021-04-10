@@ -958,7 +958,8 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 		ImOnlineId,
 		ValidatorId,
 		AssignmentId,
-		AuthorityDiscoveryId
+		AuthorityDiscoveryId,
+		BeefyId,
 	)> = vec![(
 		  //5DUWJekG4F2YPaRkf8SXDwdpPnAeFLEZhfW2bwNiT7qXah64
 		  hex!["3e633c4fcec666479afb69c29c27e9d8407eefbfacb8b2ea27d178b9400a5170"].into(),
@@ -976,6 +977,8 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 		  hex!["5258892ece3d0949394d8f592c4cdd9fcc94962e69191fd95f6e0f4146795719"].unchecked_into(),
 		  //5FkMcDTF8bhGV5NgR4J3iw9AzaSXXRcGvmK3MTDvMpk5KWwH
 		  hex!["a2f25a071c0a701b8bd41fcab21d38462fbf9493b1ab78991c6f0624e2e34f1c"].unchecked_into(),
+		  //5H2E9XjXhh2BpNFxvY8dhxhDkQwEJLm8HVCkhb8Cme9WLsQH
+		  hex!["031d006b08131cf8f63dff06c34ca075bcfd40509004eb17ef730b7c549f23eb4c"].unchecked_into(),
 	  ),
 	  (
 		  //5H8ufmHnZquZ84d55vav3ovucFoJUkgB28PfFJo9TSS1eqq9
@@ -994,6 +997,8 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 		  hex!["deb9a84f83072dd64ccddbb24c00fe08aeac23f214adcdeb0c6d6a80b7629f24"].unchecked_into(),
 		  //5HmSQTBi8c6sitSEwkaXcvvaHFCbJhr3BRLFviXZRLJk7nGb
 		  hex!["fc3e36769c550f99bdaa38b8574a9a8b4d553bb2081628c05bcc67767b752534"].unchecked_into(),
+		  //5Di6QY2YRwXFcXthNeEKz3NYPboZRWTExhRWcGsNscj4pTNt
+		  hex!["02a58557e57610b4eabd969084da9ecb915e3c76a6d50811d5b42ab1f32bfacedf"].unchecked_into(),
 	  )];
 
 	const ENDOWMENT: u128 = 1_000_000 * ROC;
@@ -1010,6 +1015,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
 				.collect(),
 		},
+		pallet_beefy: Default::default(),
 		pallet_indices: rococo_runtime::IndicesConfig {
 			indices: vec![],
 		},
@@ -1024,6 +1030,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 					x.5.clone(),
 					x.6.clone(),
 					x.7.clone(),
+					x.8.clone(),
 				),
 			)).collect::<Vec<_>>(),
 		},
@@ -1033,6 +1040,8 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 		},
 		pallet_grandpa: Default::default(),
 		pallet_im_online: Default::default(),
+		pallet_collective: Default::default(),
+		pallet_membership: Default::default(),
 		pallet_authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {
 			keys: vec![],
 		},
@@ -1041,9 +1050,9 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 		},
 		parachains_configuration: rococo_runtime::ParachainsConfigurationConfig {
 			config: polkadot_runtime_parachains::configuration::HostConfiguration {
-				validation_upgrade_frequency: 600u32,
-				validation_upgrade_delay: 300,
-				acceptance_period: 1200,
+				validation_upgrade_frequency: 1u32,
+				validation_upgrade_delay: 1,
+				code_retention_period: 1200,
 				max_code_size: 5 * 1024 * 1024,
 				max_pov_size: MAX_POV_SIZE,
 				max_head_data_size: 32 * 1024,
@@ -1051,7 +1060,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				chain_availability_period: 4,
 				thread_availability_period: 4,
 				max_upward_queue_count: 8,
-				max_upward_queue_size: 8 * 1024,
+				max_upward_queue_size: 1024 * 1024,
 				max_downward_message_size: 1024,
 				// this is approximatelly 4ms.
 				//
@@ -1059,7 +1068,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				// an import since that's a made up number and should be replaced with a constant
 				// obtained by benchmarking anyway.
 				preferred_dispatchable_upward_messages_step_weight: 4 * 1_000_000_000,
-				max_upward_message_size: 1024,
+				max_upward_message_size: 1024 * 1024,
 				max_upward_message_num_per_candidate: 5,
 				hrmp_open_request_ttl: 5,
 				hrmp_sender_deposit: 0,
@@ -1068,7 +1077,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				hrmp_channel_max_total_size: 8 * 1024,
 				hrmp_max_parachain_inbound_channels: 4,
 				hrmp_max_parathread_inbound_channels: 4,
-				hrmp_channel_max_message_size: 1024,
+				hrmp_channel_max_message_size: 1024 * 1024,
 				hrmp_max_parachain_outbound_channels: 4,
 				hrmp_max_parathread_outbound_channels: 4,
 				hrmp_max_message_num_per_candidate: 5,
@@ -1076,7 +1085,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 				no_show_slots: 2,
 				n_delay_tranches: 25,
 				needed_approvals: 2,
-				relay_vrf_modulo_samples: 10,
+				relay_vrf_modulo_samples: 2,
 				zeroth_delay_tranche_width: 0,
 				..Default::default()
 			},
