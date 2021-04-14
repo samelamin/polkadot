@@ -947,6 +947,7 @@ fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtim
 	let endowed_accounts = vec![
 		// 5Ft2Noj74oqjtRAUiPuLVtMJmf917G7AQ3fHGkBn3aC8Ftat
 		hex!["a8cb93b2be45d72e6901fa2ea9a51f3e1a42ad8ec5f48a580407d76d9921f675"].into(),
+		hex!["8e27014e1ecf8f069081ae73d771f39f0113bc1cdc753c6a6da114a48d9b5a05"].into(),
 	];
 
 	// ./scripts/prepare-test-net.sh 8
