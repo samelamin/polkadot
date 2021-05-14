@@ -107,8 +107,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 /// Runtime version (Rococo).
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("rococo"),
-	impl_name: create_runtime_str!("parity-rococo-v1.5"),
+	spec_name: create_runtime_str!("chachacha"),
+	impl_name: create_runtime_str!("centrifuge-chachacha-v1.5"),
 	authoring_version: 0,
 	spec_version: 9001,
 	impl_version: 0,
