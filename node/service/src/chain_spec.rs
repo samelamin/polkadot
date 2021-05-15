@@ -1183,7 +1183,7 @@ pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
 
 	Ok(RococoChainSpec::from_genesis(
 		"Chachacha Staging Testnet",
-		"chachacha_staging_testnet",
+		"rococo_chachacha_staging_testnet",
 		ChainType::Live,
 		move || RococoGenesisExt {
 			runtime_genesis_config: chachacha_staging_testnet_config_genesis(wasm_binary),
@@ -1924,7 +1924,7 @@ pub fn chachacha_local_testnet_config() -> Result<RococoChainSpec, String> {
 
 	Ok(RococoChainSpec::from_genesis(
 		"Chachacha Local Testnet",
-		"chachacha_local_testnet",
+		"rococo_chachacha_local_testnet",
 		ChainType::Local,
 		move || RococoGenesisExt {
 			runtime_genesis_config: rococo_local_testnet_genesis(wasm_binary),

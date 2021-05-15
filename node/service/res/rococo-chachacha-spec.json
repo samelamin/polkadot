@@ -1,6 +1,6 @@
 {
   "name": "Chachacha Staging Testnet",
-  "id": "chachacha_staging_testnet",
+  "id": "rococo_chachacha_staging_testnet",
   "chainType": "Live",
   "bootNodes": [
     "/ip4/34.89.248.129/tcp/30333/p2p/12D3KooWD8CAZBgpeZiSVVbaj8mijR6mfgUsHNAmCKwsRoRnFod4",
