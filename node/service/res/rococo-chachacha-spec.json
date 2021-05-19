@@ -59,6 +59,14 @@
             [
               "5H8ufmHnZquZ84d55vav3ovucFoJUkgB28PfFJo9TSS1eqq9",
               100000000000000
+            ],
+            [
+              "5GRLDWnMSYog7Pdh9z6muiko8vQXw5ftApMAdJetiFs6fz7m",
+              100000000000000
+            ],
+            [
+              "5HHZVXqJPHtPx533pjRJNURVF2F1oGSWCfWEvwFFLgFaWJba",
+              100000000000000
             ]
           ]
         },
@@ -74,7 +82,7 @@
                 "para_validator": "5CCxn5oKMhgsgd7dMPGyRxp7syFySfMt2hKZgyb921Ax5uxk",
                 "para_assignment": "5Dvg5r1zsfPCxG3V3tC2r5yp7RtfVJizvCfZxTYTSFj2uMCn",
                 "authority_discovery": "5FkMcDTF8bhGV5NgR4J3iw9AzaSXXRcGvmK3MTDvMpk5KWwH",
-                "beefy": "KW9NLWiNUmXR9sXTLivFs3HRqa1Xk9mrjP8YStoFyJXUAoyCh"
+                "beefy": "KW6fgFghkqXNHUCGia6mgYjtLfZ1ueHjocS84mWoFdGz5uQ1r"
               }
             ],
             [
@@ -87,7 +95,33 @@
                 "para_validator": "5DVGggRbS8yz7Ymu14X96vbS4Qvg3VX5ZQGwLRChejfgNSGL",
                 "para_assignment": "5H6je32nFSz1JuwTpyjx7rdHGaPhYj79TyK3Z6SJ9Xw35j28",
                 "authority_discovery": "5HmSQTBi8c6sitSEwkaXcvvaHFCbJhr3BRLFviXZRLJk7nGb",
-                "beefy": "KW6fgFghkqXNHUCGia6mgYjtLfZ1ueHjocS84mWoFdGz5uQ1r"
+                "beefy": "KW5EkvHfFLAzY9PPLfqvcjGwg2ZfcsRy3KUgJ95KHXZgan6m6"
+              }
+            ],
+            [
+              "5GRLDWnMSYog7Pdh9z6muiko8vQXw5ftApMAdJetiFs6fz7m",
+              "5GRLDWnMSYog7Pdh9z6muiko8vQXw5ftApMAdJetiFs6fz7m",
+              {
+                "grandpa": "5FL8g3iQxEu4tMuvX5HjoLjVU4teExrKKyahoZ6dY4Wj8SvE",
+                "babe": "5D7HfSVAXa4S7L6oVQPQ1Xki8wc8BjWAk4Dr45avUhQd6gMx",
+                "im_online": "5FCHejTz8tKT32vqsNvGSqKNa6pvMSjogubZup62t4rR7FAW",
+                "para_validator": "5FTixuzvuNjufPd4vhAndMjkwy4nD6wZr1GTRS7kzxM1nysJ",
+                "para_assignment": "5DAKGyF4gFUrsSRTMyPYnM4ehBtAJsQcKneg61azDWVKxkcU",
+                "authority_discovery": "5FNcHjvu65fNj1Mhn4DGRWMMbwsWFkTy5K7cNCCxtixvbNUk",
+                "beefy": "KWDkLxzSUTFy3iCxWbPQFreQnuUsgoaFkikmGiTBCMi1wq6Ck"
+              }
+            ],
+            [
+              "5HHZVXqJPHtPx533pjRJNURVF2F1oGSWCfWEvwFFLgFaWJba",
+              "5HHZVXqJPHtPx533pjRJNURVF2F1oGSWCfWEvwFFLgFaWJba",
+              {
+                "grandpa": "5H99Z1Ntt6NxEKgLRh6F1h7sF36zTfRgtpaHq1QQKaaeEDpi",
+                "babe": "5DVD6nVKcksJu2XAy14nDW3x1WwJdftNevrEQHLkVnst78w4",
+                "im_online": "5CLoemuHQTLReUvTNtrTa7peBxbBeuYHS6PXsog2etB8ro8B",
+                "para_validator": "5Gba4TnydtNukSsUfG82xRpykYn3KmLjW2hvGxXvAADcJtBn",
+                "para_assignment": "5GWnsBgeRup7SqGyyvXf4CGQs267GGbuhZcFN5Dohrzbq2kD",
+                "authority_discovery": "5CUNZCVuFQ8rm1ueyqtsbfrVyBvtFhGF1Uhi6DnpQ6D1mE5z",
+                "beefy": "KWCEHRXCFN9Vwxj1AyyizP9MiygD2kqGvKfh8kV3vLeQufh2o"
               }
             ]
           ]

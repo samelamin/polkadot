@@ -74,9 +74,9 @@ impl SubstrateCli for Cli {
 				.unwrap_or("polkadot")
 		} else { id };
 		Ok(match id {
-			"chachacha" => Box::new(service::chain_spec::chachacha_config()?),
-			"chachacha-local" => Box::new(service::chain_spec::chachacha_local_testnet_config()?),
-			"chachacha-staging" => Box::new(service::chain_spec::chachacha_staging_testnet_config()?),
+			"rococo-chachacha" => Box::new(service::chain_spec::chachacha_config()?),
+			"rococo-chachacha-local" => Box::new(service::chain_spec::chachacha_local_testnet_config()?),
+			"rococo-chachacha-staging" => Box::new(service::chain_spec::chachacha_staging_testnet_config()?),
 			"kusama" => Box::new(service::chain_spec::kusama_config()?),
 			"kusama-dev" => Box::new(service::chain_spec::kusama_development_config()?),
 			"kusama-local" => Box::new(service::chain_spec::kusama_local_testnet_config()?),
