@@ -52,6 +52,7 @@ const WESTEND_STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/
 #[cfg(feature = "rococo-native")]
 const ROCOCO_STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 const DEFAULT_PROTOCOL_ID: &str = "dot";
+const CHACHACHA_PROTOCOL_ID: &str = "chachacha";
 
 /// Node `ChainSpec` extensions.
 ///
@@ -142,6 +143,10 @@ pub fn rococo_config() -> Result<RococoChainSpec, String> {
 /// This is a temporary testnet that uses the same runtime as rococo.
 pub fn wococo_config() -> Result<RococoChainSpec, String> {
 	RococoChainSpec::from_json_bytes(&include_bytes!("../res/wococo.json")[..])
+}
+
+pub fn chachacha_config() -> Result<RococoChainSpec, String> {
+	RococoChainSpec::from_json_bytes(&include_bytes!("../res/rococo-chachacha.json")[..])
 }
 
 /// The default parachains host configuration.
@@ -993,6 +998,179 @@ fn rococo_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::
 	}
 }
 
+#[cfg(feature = "rococo-native")]
+fn chachacha_staging_testnet_config_genesis(wasm_binary: &[u8]) -> rococo_runtime::GenesisConfig {
+	use hex_literal::hex;
+	use sp_core::crypto::UncheckedInto;
+
+	// subkey inspect "$SECRET"
+	let endowed_accounts = vec![
+		// 5Ft2Noj74oqjtRAUiPuLVtMJmf917G7AQ3fHGkBn3aC8Ftat
+		hex!["a8cb93b2be45d72e6901fa2ea9a51f3e1a42ad8ec5f48a580407d76d9921f675"].into(),
+		// 5FH6F68v1eopRVP4ogzHe2typpPBWjFheUqqHenknTi2w9hp
+		hex!["8e27014e1ecf8f069081ae73d771f39f0113bc1cdc753c6a6da114a48d9b5a05"].into(),
+	];
+
+	// ./scripts/prepare-test-net.sh 8
+	let initial_authorities: Vec<(
+		AccountId,
+		AccountId,
+		BabeId,
+		GrandpaId,
+		ImOnlineId,
+		ValidatorId,
+		AssignmentId,
+		AuthorityDiscoveryId,
+		BeefyId,
+	)> = vec![
+		(
+			//5DUWJekG4F2YPaRkf8SXDwdpPnAeFLEZhfW2bwNiT7qXah64
+			hex!["3e633c4fcec666479afb69c29c27e9d8407eefbfacb8b2ea27d178b9400a5170"].into(),
+			//5GZA5ctKST8SqZgawjpVFgpWaxEFS3mwRF4FuzGhSeqrMZJ7
+			hex!["c6a414a1d1551b7f7dfdca752833b91c8136fbb0fef5fde5188fa00e6d8bb02d"].into(),
+			//5GpFyTqFQpi4AUAL5f4MH63c5E4dnyo7HDTvGgvmZ7iqGbSh
+			hex!["d2289a275a32e47d99e12f325267ac0ffe1d0783c96f41e8c1328713a1781330"].unchecked_into(),
+			//5G3Ha2jVf1PKDLX7QCmrFBmE1HMTBws5ZHGznuU4rmuSZPMh
+			hex!["afdbee794c6b74c04ad7352a61f1f5d9b11687175d017d38c6c8c20b64176faa"].unchecked_into(),
+			//5G8jjSYJFqf2rCuVL6VHL3B4Kopp6pQPnmBAjXPMn5zEsNQi
+			hex!["b4043a81bf19ab0e28c62b9cabd79932a59ac710e43f52b8016a7d1c82666d1c"].unchecked_into(),
+			//5CCxn5oKMhgsgd7dMPGyRxp7syFySfMt2hKZgyb921Ax5uxk
+			hex!["064c310d8495325895a73216972aaeac743b661f9c46cf3e3b045ffc81d60628"].unchecked_into(),
+			//5Dvg5r1zsfPCxG3V3tC2r5yp7RtfVJizvCfZxTYTSFj2uMCn
+			hex!["5258892ece3d0949394d8f592c4cdd9fcc94962e69191fd95f6e0f4146795719"].unchecked_into(),
+			//5FkMcDTF8bhGV5NgR4J3iw9AzaSXXRcGvmK3MTDvMpk5KWwH
+			hex!["a2f25a071c0a701b8bd41fcab21d38462fbf9493b1ab78991c6f0624e2e34f1c"].unchecked_into(),
+			//5Di6QY2YRwXFcXthNeEKz3NYPboZRWTExhRWcGsNscj4pTNt
+			hex!["02a58557e57610b4eabd969084da9ecb915e3c76a6d50811d5b42ab1f32bfacedf"].unchecked_into(),
+		),
+		(
+			//5H8ufmHnZquZ84d55vav3ovucFoJUkgB28PfFJo9TSS1eqq9
+			hex!["e061e95e9e047d79d1495810d938d8131339f4af0e021500bdbedd7afeb3b56b"].into(),
+			//5GjbjmMjDF5PC1arpjZbsRxAuPYadUWyM6jGuRVZaaZoZzwN
+			hex!["ce9ae7f7ce367ee42a708e70453e8fcdabae2076ac46536921793d6737578563"].into(),
+			//5FezeW8NHzz9qzCafjTovYdUpqx2LF1fQbvWKtZGn5vx8k93
+			hex!["9edb90ab3c60daa595a8987246cd4d64bd3e196b617c008ea3b56bdc9dd1cf65"].unchecked_into(),
+			//5FfPnW2usQXzPynHN6G7QH4NMgg14SeH1EaoJUNTTNQAdagV
+			hex!["9f297448ec202f6af48cb26aa4c0446a46ff0452de84e11f6286fb3532d9a8a3"].unchecked_into(),
+			//5CuAvpkprBhBuD3ADVKVmFFtS7SAwKWi4nk6ip3dhym5ZSGg
+			hex!["24f6e92314e5fa32d15c91f615f1f91555d674b19dcb3d4b25e4d87961eca51c"].unchecked_into(),
+			//5DVGggRbS8yz7Ymu14X96vbS4Qvg3VX5ZQGwLRChejfgNSGL
+			hex!["3ef8a1a0031cc9768b95385e7a9413698519e81f775198b54d930d3f23b83736"].unchecked_into(),
+			//5H6je32nFSz1JuwTpyjx7rdHGaPhYj79TyK3Z6SJ9Xw35j28
+			hex!["deb9a84f83072dd64ccddbb24c00fe08aeac23f214adcdeb0c6d6a80b7629f24"].unchecked_into(),
+			//5HmSQTBi8c6sitSEwkaXcvvaHFCbJhr3BRLFviXZRLJk7nGb
+			hex!["fc3e36769c550f99bdaa38b8574a9a8b4d553bb2081628c05bcc67767b752534"].unchecked_into(),
+			//5HVeJtYkGQpkBQGDGoqrfLyZ6TU8YmRmXpw8SYSBmCTuRUqj
+			hex!["026647ae3357a10afad79367654c851d1d5b471ce16be66eee1c65921a9ba63b24"].unchecked_into(),
+		),
+		(
+			//5GRLDWnMSYog7Pdh9z6muiko8vQXw5ftApMAdJetiFs6fz7m
+			hex!["c0ac3d12f037ce7029f4ed937f7e4a0a7dd448017947b70627d6dfb44b7f740f"].into(),
+			//5HYWwp1KrhFUabhShtb4WHR5CqwjyiQ4txrnDd3YuNJZi3RD
+			hex!["f2634ec910957287c04df0be4afbd79d6ddde6ae131d869867275d96dd75843b"].into(),
+			//5D7HfSVAXa4S7L6oVQPQ1Xki8wc8BjWAk4Dr45avUhQd6gMx
+			hex!["2e3486da0704a2e11407763184fe4ef2d4bf41daa9b79217db64abb3fd37d150"].unchecked_into(),
+			//5FL8g3iQxEu4tMuvX5HjoLjVU4teExrKKyahoZ6dY4Wj8SvE
+			hex!["9078ec27929d748745f4b46a979e72766d5187348c5f5674260f17c2075ff5cc"].unchecked_into(),
+			//5FCHejTz8tKT32vqsNvGSqKNa6pvMSjogubZup62t4rR7FAW
+			hex!["8a7d2dfd21927d609985d02168b1268cd859dc9da987cbf57fc96c8ed5b3db0e"].unchecked_into(),
+			//5FTixuzvuNjufPd4vhAndMjkwy4nD6wZr1GTRS7kzxM1nysJ
+			hex!["964312cea3bfbee6179d5faa3124338debbb0619be45c9b15c064e66ab45b812"].unchecked_into(),
+			//5DAKGyF4gFUrsSRTMyPYnM4ehBtAJsQcKneg61azDWVKxkcU
+			hex!["3083b1026ef95b0df745fec5992ecd378ab3fd12c0935feb817b5755fdd81f6a"].unchecked_into(),
+			//5FNcHjvu65fNj1Mhn4DGRWMMbwsWFkTy5K7cNCCxtixvbNUk
+			hex!["925c600154e3e8a494ee1bb9c387236e82c511e315164e0cafa181b9edba2e08"].unchecked_into(),
+			//5Fx5x2g94G3P3aVw4ckaB8XsdoqHnJx21Ush1UY9hRvU7o4r
+			hex!["03deba46a2167445bb80c47d16d4148ce254d0a973ee0bc27fee045b6090d502c6"].unchecked_into(),
+		),
+		(
+			//5HHZVXqJPHtPx533pjRJNURVF2F1oGSWCfWEvwFFLgFaWJba
+			hex!["e6fb334bcc25dfb0c5bcb8a0948e00c7eb494d60ec2f9228aecea93c7c095309"].into(),
+			//5FsYsf6ikSJEHpT8Fy7erigxMQCnQWp5dLHRZDdyVsea4w6r
+			hex!["a86efebc4f1133644e4c79b91ad9e3064bc9f37902d4f93d89c0a4cc95cbb306"].into(),
+			//5DVD6nVKcksJu2XAy14nDW3x1WwJdftNevrEQHLkVnst78w4
+			hex!["3eec90aed4af142912b5da34e68fde0dd77e3b8dc2b13a19e92cda9b00e2082b"].unchecked_into(),
+			//5H99Z1Ntt6NxEKgLRh6F1h7sF36zTfRgtpaHq1QQKaaeEDpi
+			hex!["e090a5ca803c2b1de14690c097095828eed80d523b3813ee8eb2fbeeb9be4823"].unchecked_into(),
+			//5CLoemuHQTLReUvTNtrTa7peBxbBeuYHS6PXsog2etB8ro8B
+			hex!["0c476f17fcc98581054db0993edb78082721e90070baf323c4a9a380f1e65b31"].unchecked_into(),
+			//5Gba4TnydtNukSsUfG82xRpykYn3KmLjW2hvGxXvAADcJtBn
+			hex!["c87b4ba3b4b640d1beeaa8338e8552eeadd0756dc65b2f9dad376d45dd94fe20"].unchecked_into(),
+			//5GWnsBgeRup7SqGyyvXf4CGQs267GGbuhZcFN5Dohrzbq2kD
+			hex!["c4d62d008a12724383d2439ddc81423b5041e0908aac242690b201f64a4c3848"].unchecked_into(),
+			//5CUNZCVuFQ8rm1ueyqtsbfrVyBvtFhGF1Uhi6DnpQ6D1mE5z
+			hex!["120cea83777f792ada9509cf2fed202f0d48c729ecdfbdff458b487add741470"].unchecked_into(),
+			//5FjtkURzTFGST8JYEmmnnwwjmYuD87pUoSoCN91K8SDnPu5t
+			hex!["039b90c14351ab0436b6bd4ff2b63ef85f7423c226b18caac49ae2cd3244f95b1a"].unchecked_into(),
+		),
+	];
+
+	const ENDOWMENT: u128 = 1_000_000 * ROC;
+	const STASH: u128 = 100 * ROC;
+
+	rococo_runtime::GenesisConfig {
+		system: rococo_runtime::SystemConfig {
+			code: wasm_binary.to_vec(),
+			changes_trie_config: Default::default(),
+		},
+		balances: rococo_runtime::BalancesConfig {
+			balances: endowed_accounts.iter()
+				.map(|k: &AccountId| (k.clone(), ENDOWMENT))
+				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+				.collect(),
+		},
+		beefy: Default::default(),
+		indices: rococo_runtime::IndicesConfig {
+			indices: vec![],
+		},
+		session: rococo_runtime::SessionConfig {
+			keys: initial_authorities.iter().map(|x| (
+				x.0.clone(),
+				x.0.clone(),
+				rococo_session_keys(
+					x.2.clone(),
+					x.3.clone(),
+					x.4.clone(),
+					x.5.clone(),
+					x.6.clone(),
+					x.7.clone(),
+					x.8.clone(),
+				),
+			)).collect::<Vec<_>>(),
+		},
+		babe: rococo_runtime::BabeConfig {
+			authorities: Default::default(),
+			epoch_config: Some(rococo_runtime::BABE_GENESIS_EPOCH_CONFIG),
+		},
+		grandpa: Default::default(),
+		im_online: Default::default(),
+		collective: Default::default(),
+		membership: Default::default(),
+		authority_discovery: rococo_runtime::AuthorityDiscoveryConfig {
+			keys: vec![],
+		},
+		sudo: rococo_runtime::SudoConfig {
+			key: endowed_accounts[0].clone(),
+		},
+		paras: rococo_runtime::ParasConfig {
+			paras: vec![],
+			_phdata: Default::default(),
+		},
+		hrmp: Default::default(),
+		parachains_configuration: rococo_runtime::ParachainsConfigurationConfig {
+			config: default_parachains_host_configuration(),
+		},
+		bridge_rococo_grandpa: rococo_runtime::BridgeRococoGrandpaConfig {
+			owner: Some(endowed_accounts[0].clone()),
+			..Default::default()
+		},
+		bridge_wococo_grandpa: rococo_runtime::BridgeWococoGrandpaConfig {
+			owner: Some(endowed_accounts[0].clone()),
+			..Default::default()
+		},
+	}
+}
+
 /// Polkadot staging testnet config.
 pub fn polkadot_staging_testnet_config() -> Result<PolkadotChainSpec, String> {
 	let wasm_binary = polkadot::WASM_BINARY.ok_or("Polkadot development wasm not available")?;
@@ -1078,6 +1256,31 @@ pub fn rococo_staging_testnet_config() -> Result<RococoChainSpec, String> {
 				.expect("Rococo Staging telemetry url is valid; qed"),
 		),
 		Some(DEFAULT_PROTOCOL_ID),
+		None,
+		Default::default(),
+	))
+}
+
+/// Chachacha staging testnet config.
+#[cfg(feature = "rococo-native")]
+pub fn chachacha_staging_testnet_config() -> Result<RococoChainSpec, String> {
+	let wasm_binary = rococo::WASM_BINARY.ok_or("Rococo development wasm not available")?;
+	let boot_nodes = vec![];
+
+	Ok(RococoChainSpec::from_genesis(
+		"Chachacha Staging Testnet",
+		"chachacha_staging_testnet",
+		ChainType::Live,
+		move || RococoGenesisExt {
+			runtime_genesis_config: chachacha_staging_testnet_config_genesis(wasm_binary),
+			session_length_in_blocks: Some(100),
+		},
+		boot_nodes,
+		Some(
+			TelemetryEndpoints::new(vec![(ROCOCO_STAGING_TELEMETRY_URL.to_string(), 0)])
+				.expect("Rococo Staging telemetry url is valid; qed"),
+		),
+		Some(CHACHACHA_PROTOCOL_ID),
 		None,
 		Default::default(),
 	))
@@ -1788,6 +1991,28 @@ pub fn rococo_local_testnet_config() -> Result<RococoChainSpec, String> {
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
+		None,
+		Default::default(),
+	))
+}
+
+/// Chachacha local testnet config (multivalidator Alice + Bob)
+#[cfg(feature = "rococo-native")]
+pub fn chachacha_local_testnet_config() -> Result<RococoChainSpec, String> {
+	let wasm_binary = rococo::WASM_BINARY.ok_or("Rococo development wasm not available")?;
+
+	Ok(RococoChainSpec::from_genesis(
+		"Chachacha Local Testnet",
+		"chachacha_local_testnet",
+		ChainType::Local,
+		move || RococoGenesisExt {
+			runtime_genesis_config: rococo_local_testnet_genesis(wasm_binary),
+			// Use 1 minute session length.
+			session_length_in_blocks: Some(10),
+		},
+		vec![],
+		None,
+		Some(CHACHACHA_PROTOCOL_ID),
 		None,
 		Default::default(),
 	))
